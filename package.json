@@ -7,6 +7,7 @@
     "devDependencies": {
         "@types/lodash": "^4.14.171",
         "@types/node": "^16.4.0",
+        "@types/wcwidth": "^1.0.0",
         "prettier": "^2.3.2",
         "typescript": "^4.3.5"
     },
@@ -14,6 +15,7 @@
         "prepack": "tsc"
     },
     "dependencies": {
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "wcwidth": "^1.0.1"
     }
 }

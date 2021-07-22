@@ -1,5 +1,6 @@
 import { Charsets as cs, Control as ctrl, Graphics as g, Modes as mo } from '..'
 import _ from 'lodash'
+import wcwidth from 'wcwidth'
 
 export class Margins {
     constructor(public top: number, bottom: number) {}
@@ -61,6 +62,11 @@ export const defaultDict = (value: () => any) => {
                 if (p === 'clear') {
                     return () => {
                         target = {}
+                    }
+                }
+                if (p === 'values') {
+                    return () => {
+                        return Object.values(target)
                     }
                 }
                 let v
@@ -154,5 +160,47 @@ export class Screen {
 
     constructor(public columns: any, public lines: any) {
         this.reset()
+    }
+
+    get display() {
+        const render = (line: any) => {
+            let isWideChar = false
+            let res: string[] = []
+            for (let i = 0; i < this.columns; i++) {
+                if (isWideChar) {
+                    isWideChar = false
+                    continue
+                }
+                let char = line[i].data
+                if (_.sum(char.slice(1).map(wcwidth)) !== 0) throw new Error()
+                isWideChar = wcwidth(char[0]) === 2
+                res.push(char)
+            }
+            return res
+        }
+        return _.range(this.lines).map((x) => render(this.buffer[x])!.join(''))
+    }
+
+    resize(lines: number = 0, columns: number = 0) {
+        lines = lines || this.lines
+        columns = columns || this.columns
+        if (lines === this.lines && columns === this.columns) return
+        _.range(lines).forEach((x) => this.dirty.add(x))
+        if (lines < this.lines) {
+            this.saveCursor()
+            this.cursorPosition(0, 0)
+            this.deleteLines(this.lines - lines)
+            this.restoreCursor()
+        }
+        if (columns < this.columns) {
+            for (const line of this.buffer.values()) {
+                for (const i of _.range(columns, this.columns)) {
+                    line.splice(i, i)
+                }
+            }
+        }
+        this.lines = lines
+        this.columns = columns
+        this.setMargins()
     }
 }
