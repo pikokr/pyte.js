@@ -19,14 +19,14 @@ export class SavePoint {
 export class Char {
     constructor(
         public data: string,
-        fg: any = 'default',
-        bg: any = 'default',
-        bold: any = false,
-        italics: any = false,
-        underscore: any = false,
-        strikethrough: any = false,
-        reverse: any = false,
-        blink: any = false,
+        public fg: any = 'default',
+        public bg: any = 'default',
+        public bold: any = false,
+        public italics: any = false,
+        public underscore: any = false,
+        public strikethrough: any = false,
+        public reverse: any = false,
+        public blink: any = false,
     ) {}
 }
 
@@ -41,10 +41,10 @@ export class Cursor {
 
 export const StaticDefaultDict = (value: any) => {
     return new Proxy(
-        {},
+        { default: value },
         {
             get(target: any, p: string | symbol): any {
-                return target.hasOwnProperty(p) ? target[p] : value
+                return target.hasOwnProperty(p) ? target[p] : target.default
             },
             set(target: any, p: string | symbol, value: any): boolean {
                 target[p] = value
@@ -219,6 +219,96 @@ export class Screen {
             this.margins = new Margins(top!, bottom!)
 
             this.cursorPosition()
+        }
+    }
+
+    setMode(modes: any[] = [], args: any = {}) {
+        if (args.private) {
+            modes = modes.map((x) => x << 5)
+            if (modes.includes(mo.DECSCNM)) {
+                _.range(this.lines).forEach((x) => this.dirty.add(x))
+            }
+        }
+
+        modes.forEach((x) => this.mode.add(x))
+
+        if (modes.includes(mo.DECCOLM)) {
+            this.savedColumns = this.columns
+            this.resize(0, 132)
+            this.eraseInDisplay(2)
+            this.cursorPosition()
+        }
+
+        if (modes.includes(mo.DECOM)) {
+            this.cursorPosition()
+        }
+
+        if (modes.includes(mo.DECSCNM)) {
+            for (const line of this.buffer.values()) {
+                line.default = this.defaultChar
+                for (const x of line) {
+                    line[x] = new Char(
+                        line[x].data,
+                        line[x].fg,
+                        line[x].bg,
+                        line[x].bold,
+                        line[x].italics,
+                        line[x].underscore,
+                        line[x].strikethrough,
+                        true,
+                        line[x].blink,
+                    )
+                }
+                this.selectGraphicRendition(7)
+            }
+        }
+    }
+
+    resetMode(modes: any[] = [], args: any = {}) {
+        if (args.private) {
+            modes = modes.map((x) => x << 5)
+            if (modes.includes(mo.DECSCNM)) {
+                _.range(this.lines).forEach((x) => this.dirty.add(x))
+            }
+        }
+
+        this.mode = new Set(_.difference(Array.from(this.mode), modes))
+
+        if (modes.includes(mo.DECCOLM)) {
+            if (this.columns === 132 && this.savedColumns !== null) {
+                this.resize(0, this.savedColumns)
+                this.savedColumns = null
+            }
+            this.eraseInDisplay(2)
+            this.cursorPosition()
+        }
+
+        if (modes.includes(mo.DECOM)) {
+            this.cursorPosition()
+        }
+
+        if (modes.includes(mo.DECSCNM)) {
+            for (const line of this.buffer.values()) {
+                line.default = this.defaultChar
+                for (const x of line) {
+                    line[x] = new Char(
+                        line[x].data,
+                        line[x].fg,
+                        line[x].bg,
+                        line[x].bold,
+                        line[x].italics,
+                        line[x].underscore,
+                        line[x].strikethrough,
+                        false,
+                        line[x].blink,
+                    )
+                }
+            }
+            this.selectGraphicRedition(27)
+        }
+
+        if (modes.includes(mo.DECTCEM)) {
+            this.cursor.hidden = true
         }
     }
 }
