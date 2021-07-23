@@ -311,4 +311,13 @@ export class Screen {
             this.cursor.hidden = true
         }
     }
+
+    defineCharset(code: any, mode: any) {
+        if (cs.MAPS.hasOwnProperty(code)) {
+            if (mode === '(')
+                this.g0Charset = cs.MAPS[code as 'B' | '0' | 'U' | 'V']
+            if (mode === ')')
+                this.g0Charset = cs.MAPS[code as 'B' | '0' | 'U' | 'V']
+        }
+    }
 }
