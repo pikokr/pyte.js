@@ -203,4 +203,22 @@ export class Screen {
         this.columns = columns
         this.setMargins()
     }
+
+    setMargins(top: number | null = null, bottom: number | null = null) {
+        if (!top && bottom === null) {
+            this.margins = null
+            return
+        }
+        const margins = this.margins || new Margins(0, this.lines - 1)
+
+        if (top === null) top = margins.top
+        else top = _.max([0, _.min([top - 1, this.lines - 1])])!
+        if (bottom === null) bottom = margins.bottom
+        else bottom = _.max([0, _.min([bottom - 1, this.lines - 1])])!
+        if (bottom! - top! >= -1) {
+            this.margins = new Margins(top!, bottom!)
+
+            this.cursorPosition()
+        }
+    }
 }
