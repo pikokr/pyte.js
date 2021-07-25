@@ -16,6 +16,7 @@
     },
     "dependencies": {
         "lodash": "^4.17.21",
+        "unicharadata": "^9.0.0-alpha.6",
         "wcwidth": "^1.0.1"
     }
 }

@@ -1,6 +1,7 @@
 import { Charsets as cs, Control as ctrl, Graphics as g, Modes as mo } from '..'
 import _ from 'lodash'
 import wcwidth from 'wcwidth'
+const unichardata = require('unichardata')
 
 export class Margins {
     constructor(public top: number, bottom: number) {}
@@ -319,5 +320,70 @@ export class Screen {
             if (mode === ')')
                 this.g0Charset = cs.MAPS[code as 'B' | '0' | 'U' | 'V']
         }
+    }
+
+    shiftIn() {
+        this.charset = 0
+    }
+
+    shiftOut() {
+        this.charset = 1
+    }
+
+    draw(data: string) {
+        let c = this.charset ? this.g1Charset : this.g0Charset
+
+        Object.entries(c).forEach(([k, v]) => {
+            data = data.split(k).join(v)
+        })
+
+        for (const char of data.split('')) {
+            const charWidth = wcwidth(char)
+
+            if (this.cursor.x === this.columns) {
+                if (this.mode.has(mo.DECAWM)) {
+                    this.dirty.add(this.cursor.y)
+                    this.carriageReturn()
+                    this.linefeed()
+                } else if (charWidth > 0) {
+                    this.cursor.x -= charWidth
+                }
+            }
+
+            if (this.mode.has(mo.IRM) && charWidth > 0)
+                this.insertCharacters(charWidth)
+
+            const line = this.buffer[this.cursor.y]
+
+            if (charWidth === 1) {
+                let replace = this.cursor.attrs
+                replace.data = char
+                line[this.cursor.x] = replace
+            } else if (charWidth === 2) {
+                let replace = this.cursor.attrs
+                replace.data = char
+                line[this.cursor.x] = replace
+                if (this.cursor.x + 1 < this.columns) {
+                    replace = this.cursor.attrs
+                    replace.data = ''
+                    line[this.cursor.x + 1] = replace
+                }
+            } else if (charWidth === 0 && unichardata.combining(char)) {
+                if (this.cursor.x) {
+                    const last = line[this.cursor.x - 1]
+                    const normalized = unichardata.normalize(
+                        'NFC',
+                        last.data + char,
+                    )
+                    let replace = last
+                    replace.data = normalized
+                    this.buffer[this.cursor.y - 1][this.columns - 1] = replace
+                }
+            } else break
+            if (charWidth > 0) {
+                this.cursor.x = _.min([this.cursor.x, this.columns])
+            }
+        }
+        this.dirty.add(this.cursor.y)
     }
 }
